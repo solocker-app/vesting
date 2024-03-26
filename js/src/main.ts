@@ -24,7 +24,7 @@ import bs58 from 'bs58';
  * The vesting schedule program ID on mainnet
  */
 export const TOKEN_VESTING_PROGRAM_ID = new PublicKey(
-  'CChTq6PthWU82YZkbveA3WDf7s97BWhBK4Vx9bmsT743',
+  'LoKuyocW8PYedCokpXFJgs1CKdmH3jxHGnpAEQY4FwA',
 );
 
 /**
@@ -155,6 +155,7 @@ export async function unlock(
       vestingAccountKey,
       vestingTokenAccountKey,
       vestingInfo.destinationAddress,
+      mintAddress,
       [seedWord],
     ),
   ];
@@ -177,6 +178,7 @@ export async function getContractInfo(
     vestingAccountKey,
     'single',
   );
+
   if (!vestingInfo) {
     throw new Error('Vesting contract account is unavailable');
   }

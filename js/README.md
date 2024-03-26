@@ -15,7 +15,7 @@ DLxB9dSQtA4WJ49hWFhxqiQkD9v6m67Yfk9voxpxrBs4
 Contract address on Mainnet
 
 ```
-CChTq6PthWU82YZkbveA3WDf7s97BWhBK4Vx9bmsT743
+LoKuyocW8PYedCokpXFJgs1CKdmH3jxHGnpAEQY4FwA
 ```
 
 The code allows you to

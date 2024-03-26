@@ -16,9 +16,11 @@ export class Numberu64 extends BN {
   toBuffer(): Buffer {
     const a = super.toArray().reverse();
     const b = Buffer.from(a);
+
     if (b.length === 8) {
       return b;
     }
+    
     if (b.length > 8) {
       throw new Error('Numberu64 too large');
     }

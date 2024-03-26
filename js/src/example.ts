@@ -1,132 +1,145 @@
-import { Connection, PublicKey, Keypair } from '@solana/web3.js';
-import fs from 'fs';
-import { Numberu64, generateRandomSeed } from './utils';
-import { Schedule } from './state';
-import { create, TOKEN_VESTING_PROGRAM_ID } from './main';
-import { signAndSendInstructions } from '@bonfida/utils';
+import BN from 'bn.js';
+import base58 from 'bs58';
+import {
+  clusterApiUrl,
+  Connection,
+  Keypair,
+  PublicKey,
+  sendAndConfirmTransaction,
+  Transaction,
+} from '@solana/web3.js';
+import {
+  create,
+  unlock,
+  changeDestination,
+  generateRandomSeed,
+  Schedule,
+  Numberu64,
+  getContractInfo,
+} from './index';
+import { getOrCreateAssociatedTokenAccount } from '@solana/spl-token';
+import { readFileSync } from 'fs';
 
-/**
- *
- * Simple example of a linear unlock.
- *
- * This is just an example, please be careful using the vesting contract and test it first with test tokens.
- *
- */
-
-/** Path to your wallet */
-const WALLET_PATH = '';
-const wallet = Keypair.fromSecretKey(
-  new Uint8Array(JSON.parse(fs.readFileSync(WALLET_PATH).toString())),
+export const TOKEN_VESTING_PROGRAM_ID = new PublicKey(
+  'LoKuyocW8PYedCokpXFJgs1CKdmH3jxHGnpAEQY4FwA',
 );
 
-/** There are better way to generate an array of dates but be careful as it's irreversible */
-const DATES = [
-  new Date(2022, 12),
-  new Date(2023, 1),
-  new Date(2023, 2),
-  new Date(2023, 3),
-  new Date(2023, 4),
-  new Date(2023, 5),
-  new Date(2023, 6),
-  new Date(2023, 7),
-  new Date(2023, 8),
-  new Date(2023, 9),
-  new Date(2023, 10),
-  new Date(2023, 11),
-  new Date(2024, 12),
-  new Date(2024, 2),
-  new Date(2024, 3),
-  new Date(2024, 4),
-  new Date(2024, 5),
-  new Date(2024, 6),
-  new Date(2024, 7),
-  new Date(2024, 8),
-  new Date(2024, 9),
-  new Date(2024, 10),
-  new Date(2024, 11),
-  new Date(2024, 12),
-];
-
-/** Info about the desintation */
-const DESTINATION_OWNER = new PublicKey('');
-const DESTINATION_TOKEN_ACCOUNT = new PublicKey('');
-
-/** Token info */
-const MINT = new PublicKey('');
-const DECIMALS = 0;
-
-/** Info about the source */
-const SOURCE_TOKEN_ACCOUNT = new PublicKey('');
-
-/** Amount to give per schedule */
-const AMOUNT_PER_SCHEDULE = 0;
-
-/** Your RPC connection */
-const connection = new Connection('');
-
-/** Do some checks before sending the tokens */
-const checks = async () => {
-  const tokenInfo = await connection.getParsedAccountInfo(
-    DESTINATION_TOKEN_ACCOUNT,
-  );
-
-  // @ts-ignore
-  const parsed = tokenInfo.value.data.parsed;
-  if (parsed.info.mint !== MINT.toBase58()) {
-    throw new Error('Invalid mint');
-  }
-  if (parsed.info.owner !== DESTINATION_OWNER.toBase58()) {
-    throw new Error('Invalid owner');
-  }
-  if (parsed.info.tokenAmount.decimals !== DECIMALS) {
-    throw new Error('Invalid decimals');
-  }
+type TestParams = {
+  connection: Connection;
+  wallet: Keypair;
 };
 
-/** Function that locks the tokens */
-const lock = async () => {
-  await checks();
-  const schedules: Schedule[] = [];
-  for (let date of DATES) {
-    schedules.push(
-      new Schedule(
-        /** Has to be in seconds */
-        // @ts-ignore
-        new Numberu64(date.getTime() / 1_000),
-        /** Don't forget to add decimals */
-        // @ts-ignore
-        new Numberu64(AMOUNT_PER_SCHEDULE * Math.pow(10, DECIMALS)),
-      ),
-    );
-  }
+export async function test_create(
+  connection: Connection,
+  wallet: Keypair,
+  mintAddress: string,
+  receiverAddress: string,
+  schedules: Schedule[],
+  programId = TOKEN_VESTING_PROGRAM_ID,
+) {
   const seed = generateRandomSeed();
+  const mint = new PublicKey(mintAddress);
 
-  console.log(`Seed: ${seed}`);
+  console.log('seed:', seed.toString());
 
-  const instruction = await create(
+  const sender = await getOrCreateAssociatedTokenAccount(
     connection,
-    TOKEN_VESTING_PROGRAM_ID,
+    wallet,
+    mint,
+    new PublicKey(wallet.publicKey),
+  );
+
+  const receiver = await getOrCreateAssociatedTokenAccount(
+    connection,
+    wallet,
+    mint,
+    new PublicKey(receiverAddress),
+  );
+
+  return create(
+    connection,
+    programId,
     Buffer.from(seed),
     wallet.publicKey,
     wallet.publicKey,
-    SOURCE_TOKEN_ACCOUNT,
-    DESTINATION_TOKEN_ACCOUNT,
-    MINT,
+    sender.address,
+    receiver.address,
+    mint,
     schedules,
   );
+}
 
-  const tx = await signAndSendInstructions(connection, [], wallet, instruction);
+async function create_main({ connection, wallet }: TestParams) {
+  const transaction = new Transaction();
 
-  console.log(`Transaction: ${tx}`);
+  transaction.add(
+    ...(await test_create(
+      connection,
+      wallet,
+      '2ZgcmUQ5pTi46taE7aM46QUb8pRM24n1gxNyqxcmhHQ7',
+      '9meGAekj5fSks2oYbv5RmVoxUam5d9T1RaxPhofnHmV2',
+      [
+        Schedule.new(
+          // @ts-ignore
+          new Numberu64(Date.now() / 1000 + 2 * 60),
+          //@ts-ignore
+          new Numberu64(10 * Math.pow(10, 9)),
+        ),
+      ],
+    )),
+  );
 
-  const txInfo = await connection.getConfirmedTransaction(tx, 'confirmed');
-  if (txInfo && !txInfo.meta?.err) {
-    console.log(
-      txInfo?.transaction.instructions[2].data.slice(1, 32 + 1).toString('hex'),
-    );
-  } else {
-    throw new Error('Transaction not confirmed.');
-  }
-};
+  const tx = await sendAndConfirmTransaction(connection, transaction, [wallet]);
+  console.log(`tx: ${tx}`);
+}
 
-lock();
+async function test_get_contract_info(connection: Connection, seed: string) {
+  return getContractInfo(connection, new PublicKey(seed));
+}
+
+async function test_get_contract_info_main({ connection }: TestParams) {
+  const info = await test_get_contract_info(
+    connection,
+    'FV4TEhchs6ya4hrAZstougD72s4hiKHZLAXBhkZf9o5Y',
+  );
+
+  // @ts-ignore
+  // console.log(info.totalAmount.toNumber());
+  // @ts-ignore
+  console.log(info.schedules[0].amount.toNumber());
+  // @ts-ignore
+  console.log("Now", Date.now())
+  // @ts-ignore
+  console.log("Release", info.schedules[0].releaseTime.toNumber());
+  console.log(info.schedules[0].isReleased)
+}
+
+async function main() {
+  const connection = new Connection(clusterApiUrl('devnet'));
+  const wallet = Keypair.fromSecretKey(
+    Uint8Array.from(
+      JSON.parse(
+        readFileSync('/Users/macbookpro/.config/solana/id.json', 'utf-8'),
+      ),
+    ),
+  );
+
+  // await create_main({ connection, wallet });
+  await test_get_contract_info_main({ connection, wallet });
+  // const instructions = await unlock(
+  //   connection,
+  //   TOKEN_VESTING_PROGRAM_ID,
+  //   Buffer.from(
+  //     '1438828747609030358604982531533607638335779682155635017658975152',
+  //   ),
+  //   new PublicKey('2ZgcmUQ5pTi46taE7aM46QUb8pRM24n1gxNyqxcmhHQ7'),
+  // );
+
+  // const transaction = new Transaction().add(...instructions);
+
+  // console.log(
+  //   await sendAndConfirmTransaction(connection, transaction, [wallet]),
+  // );
+}
+
+main().catch(console.log);
