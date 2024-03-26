@@ -1,5 +1,4 @@
-import BN from 'bn.js';
-import base58 from 'bs58';
+import { readFileSync } from 'fs';
 import {
   clusterApiUrl,
   Connection,
@@ -8,20 +7,18 @@ import {
   sendAndConfirmTransaction,
   Transaction,
 } from '@solana/web3.js';
+import { getOrCreateAssociatedTokenAccount } from '@solana/spl-token';
+
 import {
   create,
-  unlock,
-  changeDestination,
   generateRandomSeed,
   Schedule,
   Numberu64,
   getContractInfo,
 } from './index';
-import { getOrCreateAssociatedTokenAccount } from '@solana/spl-token';
-import { readFileSync } from 'fs';
 
 export const TOKEN_VESTING_PROGRAM_ID = new PublicKey(
-  'LoKuyocW8PYedCokpXFJgs1CKdmH3jxHGnpAEQY4FwA',
+  'BLoKT71oHESxKVm6YKxquMmhUFKzxzKyiif45moNBvav',
 );
 
 type TestParams = {
@@ -108,10 +105,10 @@ async function test_get_contract_info_main({ connection }: TestParams) {
   // @ts-ignore
   console.log(info.schedules[0].amount.toNumber());
   // @ts-ignore
-  console.log("Now", Date.now())
+  console.log('Now', Date.now());
   // @ts-ignore
-  console.log("Release", info.schedules[0].releaseTime.toNumber());
-  console.log(info.schedules[0].isReleased)
+  console.log('Release', info.schedules[0].releaseTime.toNumber());
+  console.log(info.schedules[0].isReleased);
 }
 
 async function main() {
@@ -125,7 +122,7 @@ async function main() {
   );
 
   // await create_main({ connection, wallet });
-  await test_get_contract_info_main({ connection, wallet });
+  // await test_get_contract_info_main({ connection, wallet });
   // const instructions = await unlock(
   //   connection,
   //   TOKEN_VESTING_PROGRAM_ID,
@@ -140,6 +137,14 @@ async function main() {
   // console.log(
   //   await sendAndConfirmTransaction(connection, transaction, [wallet]),
   // );
-}
 
+  //   const vestingInfos = await getContractInfoByTokenAddress(
+  //     connection,
+  //     TOKEN_VESTING_PROGRAM_ID,
+  //     new PublicKey('GoJ8NhgGBgjUtmv2DhoxZxS6f2mgqyijwfKCxXfYTzd9'),
+  //   );
+
+  //   console.log(JSON.stringify(vestingInfos, undefined, 2));
+  //
+}
 main().catch(console.log);

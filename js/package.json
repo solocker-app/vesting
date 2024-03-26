@@ -1,10 +1,10 @@
 {
-  "name": "@bonfida/token-vesting",
-  "version": "0.0.9",
+  "name": "@solocker/vesting",
+  "version": "0.0.1",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bonfida/token-vesting"
+    "url": "https://github.com/solocker/token-vesting"
   },
   "publishConfig": {
     "access": "public"

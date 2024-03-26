@@ -24,7 +24,7 @@ import bs58 from 'bs58';
  * The vesting schedule program ID on mainnet
  */
 export const TOKEN_VESTING_PROGRAM_ID = new PublicKey(
-  'LoKuyocW8PYedCokpXFJgs1CKdmH3jxHGnpAEQY4FwA',
+  'BLoKT71oHESxKVm6YKxquMmhUFKzxzKyiif45moNBvav',
 );
 
 /**
@@ -187,6 +187,25 @@ export async function getContractInfo(
     throw new Error('Vesting contract account is not initialized');
   }
   return info!;
+}
+
+export async function getContractInfoByTokenAddress(
+  connection: Connection,
+  programId: PublicKey,
+  ...address: PublicKey[]
+) {
+  const vestingInfos = await connection.getProgramAccounts(programId, {
+    filters: address.map(address => ({
+      memcmp: {
+        offset: 32,
+        bytes: address.toBase58(),
+      },
+    })),
+  });
+
+  return vestingInfos.map(vestingInfo =>
+    ContractInfo.fromBuffer(vestingInfo.account!.data),
+  );
 }
 
 /**

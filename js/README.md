@@ -1,21 +1,17 @@
-# Simple JS bindings
-
-## Example
-
-A linear unlock example can be found in `example.ts`
+# Solocker JS bindings
 
 ## Quickstart
 
 Contract address on Devnet
 
 ```
-DLxB9dSQtA4WJ49hWFhxqiQkD9v6m67Yfk9voxpxrBs4
+BLoKT71oHESxKVm6YKxquMmhUFKzxzKyiif45moNBvav
 ```
 
 Contract address on Mainnet
 
 ```
-LoKuyocW8PYedCokpXFJgs1CKdmH3jxHGnpAEQY4FwA
+BLoKT71oHESxKVm6YKxquMmhUFKzxzKyiif45moNBvav
 ```
 
 The code allows you to
