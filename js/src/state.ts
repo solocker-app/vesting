@@ -40,6 +40,7 @@ export class VestingScheduleHeader {
   readonly totalAmount: Numberu64;
   readonly destinationAddress!: PublicKey;
   readonly mintAddress!: PublicKey;
+  readonly createdAt!: Numberu64;
   readonly isInitialized!: boolean;
 
   constructor(
@@ -47,12 +48,14 @@ export class VestingScheduleHeader {
     destinationAddress: PublicKey,
     mintAddress: PublicKey,
     isInitialized: boolean,
+    createdAt: Numberu64,
     totalAmount: Numberu64,
   ) {
     this.seeds = seeds;
     this.destinationAddress = destinationAddress;
     this.mintAddress = mintAddress;
     this.isInitialized = isInitialized;
+    this.createdAt = createdAt;
     this.totalAmount = totalAmount;
   }
 
@@ -61,13 +64,15 @@ export class VestingScheduleHeader {
     const destinationAddress = new PublicKey(buf.slice(32, 64));
     const mintAddress = new PublicKey(buf.slice(64, 96));
     const totalAmount = Numberu64.fromBuffer(buf.slice(96, 104));
-    const isInitialized = buf[104] == 1;
+    const createdAt = Numberu64.fromBuffer(buf.slice(104, 112));
+    const isInitialized = buf[112] == 1;
 
     return new VestingScheduleHeader(
       seeds,
       destinationAddress,
       mintAddress,
       isInitialized,
+      createdAt,
       totalAmount,
     );
   }
@@ -76,6 +81,7 @@ export class VestingScheduleHeader {
 export class ContractInfo {
   readonly seeds!: Buffer;
   readonly totalAmount!: Numberu64;
+  readonly createdAt!: Numberu64;
   readonly destinationAddress!: PublicKey;
   readonly mintAddress!: PublicKey;
   readonly schedules!: Array<Schedule>;
@@ -85,6 +91,7 @@ export class ContractInfo {
     destinationAddress: PublicKey,
     mintAddress: PublicKey,
     totalAmount: Numberu64,
+    createdAt: Numberu64,
     schedules: Array<Schedule>,
   ) {
     this.seeds = seeds;
@@ -92,17 +99,17 @@ export class ContractInfo {
     this.destinationAddress = destinationAddress;
     this.mintAddress = mintAddress;
     this.schedules = schedules;
+    this.createdAt = createdAt;
   }
 
   static fromBuffer(buf: Buffer): ContractInfo | undefined {
-    const header = VestingScheduleHeader.fromBuffer(buf.slice(0, 105));
+    const header = VestingScheduleHeader.fromBuffer(buf.slice(0, 113));
 
-    if (!header.isInitialized) {
-      return undefined;
-    }
+    if (!header.isInitialized) return undefined;
+
     const schedules: Array<Schedule> = [];
 
-    for (let i = 105; i < buf.length; i += 17) {
+    for (let i = 113; i < buf.length; i += 17) {
       schedules.push(Schedule.fromBuffer(buf.slice(i, i + 17)));
     }
 
@@ -111,6 +118,7 @@ export class ContractInfo {
       header.destinationAddress,
       header.mintAddress,
       header.totalAmount,
+      header.createdAt,
       schedules,
     );
   }

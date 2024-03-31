@@ -15,11 +15,8 @@ import {
   Schedule,
   Numberu64,
   getContractInfo,
+  TOKEN_VESTING_PROGRAM_ID,
 } from './index';
-
-export const TOKEN_VESTING_PROGRAM_ID = new PublicKey(
-  'BLoKT71oHESxKVm6YKxquMmhUFKzxzKyiif45moNBvav',
-);
 
 type TestParams = {
   connection: Connection;
@@ -77,9 +74,7 @@ async function create_main({ connection, wallet }: TestParams) {
       '9meGAekj5fSks2oYbv5RmVoxUam5d9T1RaxPhofnHmV2',
       [
         Schedule.new(
-          // @ts-ignore
           new Numberu64(Date.now() / 1000 + 2 * 60),
-          //@ts-ignore
           new Numberu64(10 * Math.pow(10, 9)),
         ),
       ],
@@ -97,7 +92,7 @@ async function test_get_contract_info(connection: Connection, seed: string) {
 async function test_get_contract_info_main({ connection }: TestParams) {
   const info = await test_get_contract_info(
     connection,
-    'FV4TEhchs6ya4hrAZstougD72s4hiKHZLAXBhkZf9o5Y',
+    '5aATPMcGBZjge8hqJmFH2DZ2eeZ7ykhwE7Wp9HXkfU27',
   );
 
   // @ts-ignore
@@ -105,7 +100,7 @@ async function test_get_contract_info_main({ connection }: TestParams) {
   // @ts-ignore
   console.log(info.schedules[0].amount.toNumber());
   // @ts-ignore
-  console.log('Now', Date.now());
+  console.log('Now', info.createdAt.toNumber());
   // @ts-ignore
   console.log('Release', info.schedules[0].releaseTime.toNumber());
   console.log(info.schedules[0].isReleased);
@@ -122,7 +117,7 @@ async function main() {
   );
 
   // await create_main({ connection, wallet });
-  // await test_get_contract_info_main({ connection, wallet });
+  await test_get_contract_info_main({ connection, wallet });
   // const instructions = await unlock(
   //   connection,
   //   TOKEN_VESTING_PROGRAM_ID,
