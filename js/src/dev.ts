@@ -16,6 +16,7 @@ import {
   Numberu64,
   getContractInfo,
   TOKEN_VESTING_PROGRAM_ID,
+  getContractInfoByTokenAddress,
 } from './index';
 
 type TestParams = {
@@ -116,8 +117,20 @@ async function main() {
     ),
   );
 
+  console.log(
+    JSON.stringify(
+      await getContractInfoByTokenAddress(
+        connection,
+        TOKEN_VESTING_PROGRAM_ID,
+        new PublicKey('GoJ8NhgGBgjUtmv2DhoxZxS6f2mgqyijwfKCxXfYTzd9'),
+      ),
+      undefined,
+      2,
+    ),
+  );
+
   // await create_main({ connection, wallet });
-  await test_get_contract_info_main({ connection, wallet });
+  // await test_get_contract_info_main({ connection, wallet });
   // const instructions = await unlock(
   //   connection,
   //   TOKEN_VESTING_PROGRAM_ID,
