@@ -117,7 +117,9 @@ pub enum VestingInstruction {
 impl VestingInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         use VestingError::InvalidInstruction;
+
         let (&tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
+                
         Ok(match tag {
             0 => {
                 let seeds: [u8; 32] = rest
@@ -149,9 +151,12 @@ impl VestingInstruction {
                     .and_then(|slice| slice.try_into().ok())
                     .map(Pubkey::new)
                     .ok_or(InvalidInstruction)?;
+
                 let number_of_schedules = rest[96..].len() / SCHEDULE_SIZE;
                 let mut schedules: Vec<Schedule> = Vec::with_capacity(number_of_schedules);
+                
                 let mut offset = 96;
+                
                 for _ in 0..number_of_schedules {
                     let release_time = rest
                         .get(offset..offset + 8)
@@ -169,6 +174,7 @@ impl VestingInstruction {
                         amount,
                     })
                 }
+
                 Self::Create {
                     seeds,
                     mint_address,

@@ -135,10 +135,16 @@ impl Processor {
 
         let mut data = vesting_account.data.borrow_mut();
 
-        if data.len() != VestingScheduleHeader::LEN + schedules.len() * VestingSchedule::LEN {
-            return Err(ProgramError::InvalidAccountData);
-        }
+        // Validating data.len() using this won't work since we can exclude some data from the instruction
+        // if data.len() != VestingScheduleHeader::LEN + schedules.len() * VestingSchedule::LEN {
+        //     msg!(
+        //         "The data length does not match the required length, data={}",
+        //         data.len()
+        //     );
+        //     return Err(ProgramError::InvalidAccountData);
+        // }
 
+        // This work because we allocate space that this is the correct fixed space
         let mut offset = VestingScheduleHeader::LEN;
         let mut total_amount: u64 = 0;
 
@@ -160,12 +166,15 @@ impl Processor {
             offset += SCHEDULE_SIZE;
         }
 
+        let clock = Clock::get()?;
+
         let state_header = VestingScheduleHeader {
             total_amount,
             seeds,
-            destination_address: *destination_token_address,
-            mint_address: *mint_address,
             is_initialized: true,
+            mint_address: *mint_address,
+            created_date: clock.unix_timestamp,
+            destination_address: *destination_token_address,
         };
 
         state_header.pack_into_slice(&mut data);
@@ -186,8 +195,6 @@ impl Processor {
             token_mint.decimals,
         )?;
 
-        msg!("Bug is fucking here");
-
         invoke(
             &transfer_tokens_to_vesting_account,
             &[
@@ -199,7 +206,6 @@ impl Processor {
             ],
         )?;
 
-        msg!("Fuck the police ahhh");
         Ok(())
     }
 
@@ -256,7 +262,6 @@ impl Processor {
         for s in schedules.iter_mut() {
             if clock.unix_timestamp as u64 >= s.release_time {
                 total_amount_to_transfer += s.amount;
-                s.amount = 0;
             }
         }
 
@@ -291,6 +296,7 @@ impl Processor {
         // Set is_released true for released amounts
         for s in schedules.iter_mut() {
             if clock.unix_timestamp as u64 >= s.release_time {
+                s.amount = 0;
                 s.is_released = true;
             }
         }

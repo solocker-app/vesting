@@ -18,18 +18,20 @@ pub struct VestingScheduleHeader {
     pub destination_address: Pubkey,
     pub mint_address: Pubkey,
     pub total_amount: u64,
+    pub created_date: i64, 
     pub is_initialized: bool,
 }
 
 impl Sealed for VestingScheduleHeader {}
 
 impl Pack for VestingScheduleHeader {
-    const LEN: usize = 105;
+    const LEN: usize = 113;
 
     fn pack_into_slice(&self, target: &mut [u8]) {
         let destination_address_bytes = self.destination_address.to_bytes();
         let mint_address_bytes = self.mint_address.to_bytes();
         let total_amount_bytes = self.total_amount.to_le_bytes();
+        let created_date = self.created_date.to_le_bytes();
 
         for i in 0..32 {
             target[i] = self.seeds[i];
@@ -47,7 +49,11 @@ impl Pack for VestingScheduleHeader {
             target[i] = total_amount_bytes[i - 96];
         }
 
-        target[104] = self.is_initialized as u8;
+        for i in 104..112 {
+            target[i] = created_date[i - 104];
+        }
+
+        target[112] = self.is_initialized as u8;
     }
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
@@ -58,14 +64,16 @@ impl Pack for VestingScheduleHeader {
         let seeds = arrayref::array_ref!(&src[..32], 0, 32);
         let destination_address = Pubkey::from(arrayref::array_ref!(&src[32..64], 0, 32).clone());
         let mint_address = Pubkey::from(arrayref::array_ref!(&src[64..96], 0, 32).clone());
-        let total_amount = u64::from_le_bytes(arrayref::array_ref!(&src[96..104], 0, 8).clone());
-        let is_initialized = src[104] == 1;
+        let total_amount = u64::from_le_bytes(arrayref::array_ref!(&src[96..104], 0, 8).clone());    
+        let created_date = i64::from_le_bytes(src[104..112].try_into().unwrap());
+        let is_initialized = src[112] == 1;
 
         Ok(Self {
             seeds: seeds.clone(),
             destination_address,
             mint_address,
             is_initialized,
+            created_date,
             total_amount,
         })
     }
@@ -147,11 +155,12 @@ mod tests {
     fn test_state_packing() {
         let seeds: [u8; 32] = [0; 32];
         let header_state = VestingScheduleHeader {
-            seeds: seeds,
+            seeds,
             destination_address: Pubkey::new_unique(),
             mint_address: Pubkey::new_unique(),
             is_initialized: true,
             total_amount: 1389,
+            created_date: 30767976,
         };
         let schedule_state_0 = VestingSchedule {
             release_time: 30767976,
@@ -165,7 +174,7 @@ mod tests {
         };
 
         let state_size = VestingScheduleHeader::LEN + 2 * VestingSchedule::LEN;
-        let mut state_array = [0u8; 139];
+        let mut state_array = [0u8; 147];
 
         header_state.pack_into_slice(&mut state_array[..VestingScheduleHeader::LEN]);
         schedule_state_0.pack_into_slice(
@@ -182,6 +191,7 @@ mod tests {
         expected.extend_from_slice(&header_state.destination_address.to_bytes());
         expected.extend_from_slice(&header_state.mint_address.to_bytes());
         expected.extend_from_slice(&header_state.total_amount.to_le_bytes());
+        expected.extend_from_slice(&header_state.created_date.to_le_bytes());
         expected.extend_from_slice(&[header_state.is_initialized as u8]);
 
         expected.extend_from_slice(&schedule_state_0.release_time.to_le_bytes());
