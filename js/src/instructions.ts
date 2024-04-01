@@ -12,14 +12,23 @@ export enum Instruction {
   Create,
 }
 
-export function createInitInstruction(
-  systemProgramId: PublicKey,
-  vestingProgramId: PublicKey,
-  payerKey: PublicKey,
-  vestingAccountKey: PublicKey,
-  seeds: Array<Buffer | Uint8Array>,
-  numberOfSchedules: number,
-): TransactionInstruction {
+type CreateInitInstruction = {
+  systemProgramId: PublicKey;
+  vestingProgramId: PublicKey;
+  payerKey: PublicKey;
+  vestingAccountKey: PublicKey;
+  seeds: Array<Buffer | Uint8Array>;
+  numberOfSchedules: number;
+};
+
+export function createInitInstruction({
+  seeds,
+  payerKey,
+  systemProgramId,
+  vestingProgramId,
+  vestingAccountKey,
+  numberOfSchedules,
+}: CreateInitInstruction): TransactionInstruction {
   let buffers = [
     Buffer.from(Int8Array.from([0]).buffer),
     Buffer.concat(seeds),
@@ -58,23 +67,41 @@ export function createInitInstruction(
   });
 }
 
-export function createCreateInstruction(
-  vestingProgramId: PublicKey,
-  tokenProgramId: PublicKey,
-  vestingAccountKey: PublicKey,
-  vestingTokenAccountKey: PublicKey,
-  sourceTokenAccountOwnerKey: PublicKey,
-  sourceTokenAccountKey: PublicKey,
-  destinationTokenAccountKey: PublicKey,
-  mintAddress: PublicKey,
-  schedules: Array<Schedule>,
-  seeds: Array<Buffer | Uint8Array>,
-): TransactionInstruction {
+type CreateCreateInstruction = {
+  isNative: boolean;
+  systemProgramId: PublicKey;
+  mintAddress: PublicKey;
+  schedules: Array<Schedule>;
+  seeds: Array<Buffer | Uint8Array>;
+  tokenProgramId: PublicKey;
+  vestingProgramId: PublicKey;
+  vestingAccountKey: PublicKey;
+  vestingTokenAccountKey: PublicKey;
+  sourceTokenAccountKey: PublicKey;
+  sourceTokenAccountOwnerKey: PublicKey;
+  destinationTokenAccountKey: PublicKey;
+};
+
+export function createCreateInstruction({
+  seeds,
+  isNative,
+  schedules,
+  mintAddress,
+  systemProgramId,
+  destinationTokenAccountKey,
+  sourceTokenAccountKey,
+  sourceTokenAccountOwnerKey,
+  vestingAccountKey,
+  vestingProgramId,
+  vestingTokenAccountKey,
+  tokenProgramId,
+}: CreateCreateInstruction): TransactionInstruction {
   let buffers = [
     Buffer.from(Int8Array.from([1]).buffer),
     Buffer.concat(seeds),
     mintAddress.toBuffer(),
     destinationTokenAccountKey.toBuffer(),
+    Buffer.from(Int8Array.from([isNative ? 1 : 0]).buffer),
   ];
 
   schedules.forEach(s => {
@@ -83,6 +110,11 @@ export function createCreateInstruction(
 
   const data = Buffer.concat(buffers);
   const keys = [
+    {
+      pubkey: systemProgramId,
+      isSigner: false,
+      isWritable: false,
+    },
     {
       pubkey: tokenProgramId,
       isSigner: false,
@@ -114,7 +146,7 @@ export function createCreateInstruction(
       isWritable: false,
     },
   ];
-  
+
   return new TransactionInstruction({
     keys,
     programId: vestingProgramId,
@@ -122,22 +154,43 @@ export function createCreateInstruction(
   });
 }
 
-export function createUnlockInstruction(
-  vestingProgramId: PublicKey,
-  tokenProgramId: PublicKey,
-  clockSysvarId: PublicKey,
-  vestingAccountKey: PublicKey,
-  vestingTokenAccountKey: PublicKey,
-  destinationTokenAccountKey: PublicKey,
-  mintAddress: PublicKey,
-  seeds: Array<Buffer | Uint8Array>,
-): TransactionInstruction {
+type CreateUnlockInstruction = {
+  isNative: boolean;
+  mintAddress: PublicKey;
+  systemProgramId: PublicKey;
+  seeds: Array<Buffer | Uint8Array>;
+  vestingProgramId: PublicKey;
+  tokenProgramId: PublicKey;
+  clockSysvarId: PublicKey;
+  vestingAccountKey: PublicKey;
+  vestingTokenAccountKey: PublicKey;
+  destinationTokenAccountKey: PublicKey;
+};
+
+export function createUnlockInstruction({
+  seeds,
+  isNative,
+  systemProgramId,
+  tokenProgramId,
+  vestingAccountKey,
+  vestingProgramId,
+  vestingTokenAccountKey,
+  clockSysvarId,
+  destinationTokenAccountKey,
+  mintAddress,
+}: CreateUnlockInstruction): TransactionInstruction {
   const data = Buffer.concat([
     Buffer.from(Int8Array.from([2]).buffer),
     Buffer.concat(seeds),
+    Buffer.from(Int8Array.from([isNative ? 1 : 0]).buffer),
   ]);
 
   const keys = [
+    {
+      pubkey: systemProgramId,
+      isSigner: false,
+      isWritable: false,
+    },
     {
       pubkey: tokenProgramId,
       isSigner: false,

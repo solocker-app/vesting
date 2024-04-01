@@ -1,3 +1,5 @@
+import bs58 from 'bs58';
+import { assert } from 'console';
 import {
   PublicKey,
   SystemProgram,
@@ -17,14 +19,13 @@ import {
   createUnlockInstruction,
 } from './instructions';
 import { ContractInfo, Schedule } from './state';
-import { assert } from 'console';
-import bs58 from 'bs58';
+
 
 /**
  * The vesting schedule program ID on mainnet
  */
 export const TOKEN_VESTING_PROGRAM_ID = new PublicKey(
-  '1oCKemcKHNngiufKigJzARCSLjZJmSrFvqCzfS1ogsJ ',
+  '1oCKemcKHNngiufKigJzARCSLjZJmSrFvqCzfS1ogsJ',
 );
 
 /**
@@ -50,6 +51,7 @@ export async function create(
   destinationTokenPubkey: PublicKey,
   mintAddress: PublicKey,
   schedules: Array<Schedule>,
+  isNative: boolean = false,
 ): Promise<Array<TransactionInstruction>> {
   // If no source token account was given, use the associated source account
   if (possibleSourceTokenPubkey == null) {
@@ -88,32 +90,34 @@ export async function create(
   }
 
   let instruction = [
-    createInitInstruction(
-      SystemProgram.programId,
-      programId,
-      payer,
+    createInitInstruction({
       vestingAccountKey,
-      [seedWord],
-      schedules.length,
-    ),
+      payerKey: payer,
+      seeds: [seedWord],
+      vestingProgramId: programId,
+      numberOfSchedules: schedules.length,
+      systemProgramId: SystemProgram.programId,
+    }),
     createAssociatedTokenAccountInstruction(
       payer,
       vestingTokenAccountKey,
       vestingAccountKey,
       mintAddress,
     ),
-    createCreateInstruction(
-      programId,
-      TOKEN_PROGRAM_ID,
-      vestingAccountKey,
-      vestingTokenAccountKey,
-      sourceTokenOwner,
-      possibleSourceTokenPubkey,
-      destinationTokenPubkey,
+    createCreateInstruction({
       mintAddress,
       schedules,
-      [seedWord],
-    ),
+      isNative,
+      vestingAccountKey,
+      vestingTokenAccountKey,
+      seeds: [seedWord],
+      systemProgramId: SystemProgram.programId,
+      vestingProgramId: programId,
+      tokenProgramId: TOKEN_PROGRAM_ID,
+      sourceTokenAccountOwnerKey: sourceTokenOwner,
+      sourceTokenAccountKey: possibleSourceTokenPubkey,
+      destinationTokenAccountKey: destinationTokenPubkey,
+    }),
   ];
   return instruction;
 }
@@ -131,6 +135,7 @@ export async function unlock(
   programId: PublicKey,
   seedWord: Buffer | Uint8Array,
   mintAddress: PublicKey,
+  isNative: boolean = false,
 ): Promise<Array<TransactionInstruction>> {
   seedWord = seedWord.slice(0, 31);
   const [vestingAccountKey, bump] = await PublicKey.findProgramAddress(
@@ -148,16 +153,18 @@ export async function unlock(
   const vestingInfo = await getContractInfo(connection, vestingAccountKey);
 
   let instruction = [
-    createUnlockInstruction(
-      programId,
-      TOKEN_PROGRAM_ID,
-      SYSVAR_CLOCK_PUBKEY,
+    createUnlockInstruction({
+      isNative,
+      mintAddress,
       vestingAccountKey,
       vestingTokenAccountKey,
-      vestingInfo.destinationAddress,
-      mintAddress,
-      [seedWord],
-    ),
+      seeds: [seedWord],
+      vestingProgramId: programId,
+      tokenProgramId: TOKEN_PROGRAM_ID,
+      clockSysvarId: SYSVAR_CLOCK_PUBKEY,
+      systemProgramId: SystemProgram.programId,
+      destinationTokenAccountKey: vestingInfo.destinationAddress,
+    }),
   ];
 
   return instruction;

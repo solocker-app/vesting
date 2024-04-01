@@ -126,7 +126,8 @@ async fn test_token_vesting() {
             &destination_token_account.pubkey(),
             &mint.pubkey(),
             schedules,
-            seeds.clone()
+            seeds.clone(),
+            false
         ).unwrap(),
         unlock(
             &program_id,
@@ -136,7 +137,8 @@ async fn test_token_vesting() {
             &vesting_token_account.pubkey(),
             &destination_token_account.pubkey(),
             &mint.pubkey(),
-            seeds.clone()
+            seeds.clone(),
+            false
         ).unwrap()
     ];
 

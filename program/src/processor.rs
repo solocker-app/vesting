@@ -1,4 +1,7 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{
+    prelude::{borsh::de, *},
+    system_program,
+};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
@@ -14,9 +17,11 @@ use solana_program::{
     sysvar::{clock::Clock, Sysvar},
 };
 
+use anchor_lang::solana_program::system_instruction;
 use anchor_spl::token_interface::Mint;
 use num_traits::FromPrimitive;
 use spl_token::{instruction::transfer_checked, state::Account};
+use spl_token_2022::instruction::sync_native;
 
 use crate::{
     error::VestingError,
@@ -77,10 +82,12 @@ impl Processor {
         seeds: [u8; 32],
         mint_address: &Pubkey,
         destination_token_address: &Pubkey,
+        is_native: bool,
         schedules: Vec<Schedule>,
     ) -> ProgramResult {
         let accounts_iter = &mut accounts.iter();
 
+        let system_program_account = next_account_info(accounts_iter)?;
         let spl_token_account = next_account_info(accounts_iter)?;
         let vesting_account = next_account_info(accounts_iter)?;
         let vesting_token_account = next_account_info(accounts_iter)?;
@@ -179,6 +186,37 @@ impl Processor {
 
         state_header.pack_into_slice(&mut data);
 
+        if is_native {
+            msg!("is native mint");
+
+            if source_token_account.lamports() < total_amount {
+                msg!("The source token account has insufficient funds.");
+                return Err(ProgramError::InsufficientFunds);
+            }
+
+            let transfer_instruction = system_instruction::transfer(
+                source_token_account.key,
+                vesting_token_account.key,
+                total_amount,
+            );
+
+            let sync_native_instruction =
+                sync_native(vesting_token_account.owner, vesting_token_account.key)?;
+
+            invoke(
+                &transfer_instruction,
+                &[
+                    source_token_account.clone(),
+                    vesting_token_account.clone(),
+                    system_program_account.clone(),
+                ],
+            )?;
+
+            invoke(&sync_native_instruction, &[vesting_token_account.clone()])?;
+
+            return Ok(());
+        }
+
         if Account::unpack(&source_token_account.data.borrow())?.amount < total_amount {
             msg!("The source token account has insufficient funds.");
             return Err(ProgramError::InsufficientFunds);
@@ -213,9 +251,11 @@ impl Processor {
         program_id: &Pubkey,
         _accounts: &[AccountInfo],
         seeds: [u8; 32],
+        is_native: bool,
     ) -> ProgramResult {
         let accounts_iter = &mut _accounts.iter();
 
+        let system_program_account = next_account_info(accounts_iter)?;
         let spl_token_account = next_account_info(accounts_iter)?;
         let clock_sysvar_account = next_account_info(accounts_iter)?;
         let vesting_account = next_account_info(accounts_iter)?;
@@ -270,6 +310,10 @@ impl Processor {
             return Err(ProgramError::InvalidArgument);
         }
 
+        if is_native {
+            panic!("Native unlock token not supported! Native tokens are released as WSOL");
+        }
+        
         let transfer_tokens_from_vesting_account = transfer_checked(
             &spl_token_account.key,
             &vesting_token_account.key,
@@ -377,9 +421,9 @@ impl Processor {
                 msg!("Instruction: Init");
                 Self::process_init(program_id, accounts, seeds, number_of_schedules)
             }
-            VestingInstruction::Unlock { seeds } => {
+            VestingInstruction::Unlock { seeds, is_native } => {
                 msg!("Instruction: Unlock");
-                Self::process_unlock(program_id, accounts, seeds)
+                Self::process_unlock(program_id, accounts, seeds, is_native)
             }
             VestingInstruction::ChangeDestination { seeds } => {
                 msg!("Instruction: Change Destination");
@@ -390,17 +434,16 @@ impl Processor {
                 mint_address,
                 destination_token_address,
                 schedules,
-            } => {
-                msg!("Instruction: Create Schedule");
-                Self::process_create(
-                    program_id,
-                    accounts,
-                    seeds,
-                    &mint_address,
-                    &destination_token_address,
-                    schedules,
-                )
-            }
+                is_native,
+            } => Self::process_create(
+                program_id,
+                accounts,
+                seeds,
+                &mint_address,
+                &destination_token_address,
+                is_native,
+                schedules,
+            ),
         }
     }
 }

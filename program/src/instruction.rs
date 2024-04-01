@@ -4,7 +4,7 @@ use solana_program::{
     instruction::{AccountMeta, Instruction},
     msg,
     program_error::ProgramError,
-    pubkey::Pubkey
+    pubkey::Pubkey,
 };
 
 use std::convert::TryInto;
@@ -17,7 +17,9 @@ use arbitrary::Arbitrary;
 impl Arbitrary for VestingInstruction {
     fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
         let seeds: [u8; 32] = u.arbitrary()?;
+        let is_native = u.arbitrary()?;
         let choice = u.choose(&[0, 1, 2, 3])?;
+
         match choice {
             0 => {
                 let number_of_schedules = u.arbitrary()?;
@@ -32,14 +34,16 @@ impl Arbitrary for VestingInstruction {
                 let mint_address: Pubkey = Pubkey::new(&key_bytes);
                 let key_bytes: [u8; 32] = u.arbitrary()?;
                 let destination_token_address: Pubkey = Pubkey::new(&key_bytes);
+
                 return Ok(Self::Create {
                     seeds,
                     mint_address,
                     destination_token_address,
                     schedules: schedules.to_vec(),
+                    is_native,
                 });
             }
-            2 => return Ok(Self::Unlock { seeds }),
+            2 => return Ok(Self::Unlock { seeds, is_native }),
             _ => return Ok(Self::ChangeDestination { seeds }),
         }
     }
@@ -88,6 +92,7 @@ pub enum VestingInstruction {
         seeds: [u8; 32],
         mint_address: Pubkey,
         destination_token_address: Pubkey,
+        is_native: bool,
         schedules: Vec<Schedule>,
     },
     /// Unlocks a simple vesting contract (SVC) - can only be invoked by the program itself
@@ -99,7 +104,7 @@ pub enum VestingInstruction {
     ///   1. `[writable]` The vesting account
     ///   2. `[writable]` The vesting spl-token account
     ///   3. `[writable]` The destination spl-token account
-    Unlock { seeds: [u8; 32] },
+    Unlock { seeds: [u8; 32], is_native: bool },
 
     /// Change the destination account of a given simple vesting contract (SVC)
     /// - can only be invoked by the present destination address of the contract.
@@ -119,7 +124,7 @@ impl VestingInstruction {
         use VestingError::InvalidInstruction;
 
         let (&tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
-                
+
         Ok(match tag {
             0 => {
                 let seeds: [u8; 32] = rest
@@ -151,12 +156,13 @@ impl VestingInstruction {
                     .and_then(|slice| slice.try_into().ok())
                     .map(Pubkey::new)
                     .ok_or(InvalidInstruction)?;
+                let is_native = rest[96] == 1;
 
-                let number_of_schedules = rest[96..].len() / SCHEDULE_SIZE;
+                let number_of_schedules = rest[97..].len() / SCHEDULE_SIZE;
                 let mut schedules: Vec<Schedule> = Vec::with_capacity(number_of_schedules);
-                
-                let mut offset = 96;
-                
+
+                let mut offset = 97;
+
                 for _ in 0..number_of_schedules {
                     let release_time = rest
                         .get(offset..offset + 8)
@@ -180,15 +186,19 @@ impl VestingInstruction {
                     mint_address,
                     destination_token_address,
                     schedules,
+                    is_native,
                 }
             }
             2 | 3 => {
                 let seeds: [u8; 32] = rest
-                    .get(..32)
+                    .get(0..32)
                     .and_then(|slice| slice.try_into().ok())
                     .unwrap();
                 match tag {
-                    2 => Self::Unlock { seeds },
+                    2 => {
+                        let is_native = rest[32] == 1;
+                        Self::Unlock { seeds, is_native }
+                    }
                     _ => Self::ChangeDestination { seeds },
                 }
             }
@@ -215,19 +225,23 @@ impl VestingInstruction {
                 mint_address,
                 destination_token_address,
                 schedules,
+                is_native,
             } => {
                 buf.push(1);
                 buf.extend_from_slice(seeds);
                 buf.extend_from_slice(&mint_address.to_bytes());
                 buf.extend_from_slice(&destination_token_address.to_bytes());
+                buf.extend_from_slice(&[is_native.clone() as u8]);
+
                 for s in schedules.iter() {
                     buf.extend_from_slice(&s.release_time.to_le_bytes());
                     buf.extend_from_slice(&s.amount.to_le_bytes());
                 }
             }
-            &Self::Unlock { seeds } => {
+            &Self::Unlock { seeds, is_native } => {
                 buf.push(2);
                 buf.extend_from_slice(&seeds);
+                buf.extend_from_slice(&[is_native as u8]);
             }
             &Self::ChangeDestination { seeds } => {
                 buf.push(3);
@@ -278,12 +292,16 @@ pub fn create(
     mint_address: &Pubkey,
     schedules: Vec<Schedule>,
     seeds: [u8; 32],
+    is_native: bool,
 ) -> Result<Instruction, ProgramError> {
+    msg!("is_native: {}", is_native);
+
     let data = VestingInstruction::Create {
         mint_address: *mint_address,
         seeds,
         destination_token_address: *destination_token_account_key,
         schedules,
+        is_native,
     }
     .pack();
     let accounts = vec![
@@ -311,8 +329,9 @@ pub fn unlock(
     destination_token_account_key: &Pubkey,
     mint_token_account_key: &Pubkey,
     seeds: [u8; 32],
+    is_native: bool,
 ) -> Result<Instruction, ProgramError> {
-    let data = VestingInstruction::Unlock { seeds }.pack();
+    let data = VestingInstruction::Unlock { seeds, is_native }.pack();
     let accounts = vec![
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(*clock_sysvar_id, false),
@@ -321,7 +340,7 @@ pub fn unlock(
         AccountMeta::new(*destination_token_account_key, false),
         AccountMeta::new_readonly(*mint_token_account_key, false),
     ];
-    
+
     Ok(Instruction {
         program_id: *vesting_program_id,
         accounts,
@@ -368,12 +387,16 @@ mod test {
             }],
             mint_address: mint_address.clone(),
             destination_token_address,
+            is_native: true,
         };
         let packed_create = original_create.pack();
         let unpacked_create = VestingInstruction::unpack(&packed_create).unwrap();
         assert_eq!(original_create, unpacked_create);
 
-        let original_unlock = VestingInstruction::Unlock { seeds: [50u8; 32] };
+        let original_unlock = VestingInstruction::Unlock {
+            seeds: [50u8; 32],
+            is_native: true,
+        };
         assert_eq!(
             original_unlock,
             VestingInstruction::unpack(&original_unlock.pack()).unwrap()
