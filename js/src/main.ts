@@ -25,7 +25,7 @@ import { ContractInfo, Schedule } from './state';
  * The vesting schedule program ID on mainnet
  */
 export const TOKEN_VESTING_PROGRAM_ID = new PublicKey(
-  '1oCKemcKHNngiufKigJzARCSLjZJmSrFvqCzfS1ogsJ',
+  '1ocCqQWucYtpsXuWnMwxf54BsNHmeXGx2MVNvY122oT',
 );
 
 /**

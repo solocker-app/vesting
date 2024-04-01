@@ -19,13 +19,10 @@ import {
   Numberu64,
   unlock,
   // getContractInfo,
-  // TOKEN_VESTING_PROGRAM_ID,
+  TOKEN_VESTING_PROGRAM_ID,
   // getContractInfoByTokenAddress,
 } from './index';
 
-const TOKEN_VESTING_PROGRAM_ID = new PublicKey(
-  '1oCKemcKHNngiufKigJzARCSLjZJmSrFvqCzfS1ogsJ',
-);
 
 type TestParams = {
   connection: Connection;
