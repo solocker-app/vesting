@@ -24,7 +24,7 @@ import bs58 from 'bs58';
  * The vesting schedule program ID on mainnet
  */
 export const TOKEN_VESTING_PROGRAM_ID = new PublicKey(
-  '8soLn4k6bqnj6AUAjQu2eWmqynG4zFtyXCQZ1WJRhRuE',
+  '1oCKemcKHNngiufKigJzARCSLjZJmSrFvqCzfS1ogsJ ',
 );
 
 /**

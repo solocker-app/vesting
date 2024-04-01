@@ -5,13 +5,13 @@
 Contract address on Devnet
 
 ```
-8soLn4k6bqnj6AUAjQu2eWmqynG4zFtyXCQZ1WJRhRuE
+1oCKemcKHNngiufKigJzARCSLjZJmSrFvqCzfS1ogsJ 
 ```
 
 Contract address on Mainnet
 
 ```
-8soLn4k6bqnj6AUAjQu2eWmqynG4zFtyXCQZ1WJRhRuE
+1oCKemcKHNngiufKigJzARCSLjZJmSrFvqCzfS1ogsJ 
 ```
 
 The code allows you to

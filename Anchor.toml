@@ -8,4 +8,4 @@ cluster = "mainnet"
 wallet = "~/.config/solana/id.json"
 
 [programs.mainnet]
-token_vesting = "8soLn4k6bqnj6AUAjQu2eWmqynG4zFtyXCQZ1WJRhRuE"
+token_vesting = "1oCKemcKHNngiufKigJzARCSLjZJmSrFvqCzfS1ogsJ "
