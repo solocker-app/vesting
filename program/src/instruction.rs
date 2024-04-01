@@ -1,5 +1,6 @@
 use crate::error::VestingError;
 
+use anchor_lang::system_program;
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     msg,
@@ -294,8 +295,6 @@ pub fn create(
     seeds: [u8; 32],
     is_native: bool,
 ) -> Result<Instruction, ProgramError> {
-    msg!("is_native: {}", is_native);
-
     let data = VestingInstruction::Create {
         mint_address: *mint_address,
         seeds,
@@ -305,6 +304,7 @@ pub fn create(
     }
     .pack();
     let accounts = vec![
+        AccountMeta::new_readonly(system_program::ID, false),
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new(*vesting_account_key, false),
         AccountMeta::new(*vesting_token_account_key, false),
@@ -333,6 +333,7 @@ pub fn unlock(
 ) -> Result<Instruction, ProgramError> {
     let data = VestingInstruction::Unlock { seeds, is_native }.pack();
     let accounts = vec![
+        AccountMeta::new_readonly(system_program::ID, false),
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(*clock_sysvar_id, false),
         AccountMeta::new(*vesting_account_key, false),
