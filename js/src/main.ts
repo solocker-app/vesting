@@ -39,6 +39,7 @@ export const TOKEN_VESTING_PROGRAM_ID = new PublicKey(
  * @param destinationTokenPubkey The destination token account i.e where unlocked tokens will be transfered
  * @param mintAddress The mint of the tokens being vested
  * @param schedules The array of vesting schedules
+ * @param isNative if a token is solana native Token
  * @returns An array of `TransactionInstruction`
  */
 export async function create(
@@ -128,6 +129,7 @@ export async function create(
  * @param programId The token vesting program ID
  * @param seedWord Seed words used to derive the vesting account
  * @param mintAddress The mint of the vested tokens
+ * @param isNative if a token is solana native Token
  * @returns An array of `TransactionInstruction`
  */
 export async function unlock(
